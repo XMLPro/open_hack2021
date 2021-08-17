@@ -1,5 +1,4 @@
 from enum import Enum
-from typing_extensions import Unpack
 
 class EyeDirection(Enum):
     CENTER = 0 # とれる？とれたら
@@ -35,5 +34,5 @@ def detect_gestures(frame):
     """
     # frameはcap.read()の返り値です。
     # このフレームからジェスチャーを検出して、上のジェスチャーのEnumのリストを返していただけると助かります！
-    
+
     pass
