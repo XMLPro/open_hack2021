@@ -14,4 +14,4 @@ pygame = "==2.0.1"
 python_version = "3.8"
 
 [scripts]
-keyboard = "python3 sound_keyboard/keyboard/keyboard.py"
+keyboard = "bash -c \"export PYTHONPATH=${PWD} && python3 sound_keyboard/keyboard/keyboard.py\""
