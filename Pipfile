@@ -7,6 +7,7 @@ name = "pypi"
 numpy = "==1.21.2"
 opencv-contrib-python = "==4.5.3.56"
 pygame = "==2.0.1"
+dlib = "*"
 
 [dev-packages]
 

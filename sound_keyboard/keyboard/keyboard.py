@@ -6,6 +6,12 @@ from sound_keyboard.keyboard.state_controller import (
     KeyboardStateController,
     Direction
 )
+import cv2
+
+from sound_keyboard.face_gesture_detector.face_gesture_detector import (
+    detect_gestures,
+    Gestures
+)
 
 # constants
 BACKGROUND_COLOR = (242, 242, 242)
@@ -25,6 +31,8 @@ class Keyboard:
 
         # setting keyboard controller
         self.keyboard_state_controller = KeyboardStateController()
+
+        self.cap = cv2.VideoCapture(0)
     
     def draw_text(self, char_info):
         char, pos, size = char_info
@@ -110,6 +118,12 @@ class Keyboard:
 
             pygame.display.update()
 
+            gestures: Gestures = None
+            ret, frame = self.cap.read()
+
+            if ret:
+                gestures = detect_gestures(frame)
+
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     pygame.quit()
@@ -130,6 +144,11 @@ class Keyboard:
                         self.keyboard_state_controller.move(Direction.RIGHT)
                     if event.key == pygame.K_DOWN:
                         self.keyboard_state_controller.move(Direction.DOWN)
+
+
+            # Gesturesオブジェクトの状態を読み出して操作を確定する
+            if gestures is None:
+                continue
                     
 
 if __name__ == '__main__':
