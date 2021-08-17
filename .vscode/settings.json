@@ -1,9 +1,0 @@
-{
-    "python.pythonPath": " /home/cl0wn/.local/share/virtualenvs/open_hack2021-5uBjJqfI/bin/python",
-    "python.autoComplete.extraPaths": [
-        "/home/cl0wn/.local/share/virtualenvs/open_hack2021-5uBjJqfI/lib/python3.8/site-packages/"
-    ],
-    "python.analysis.extraPaths": [
-        "/home/cl0wn/.local/share/virtualenvs/open_hack2021-5uBjJqfI/lib/python3.8/site-packages/"
-    ]
-}
