@@ -1,5 +1,4 @@
 from enum import Enum
-from typing_extensions import Unpack
 
 class EyeDirection(Enum):
     CENTER = 0 # とれる？とれたら
