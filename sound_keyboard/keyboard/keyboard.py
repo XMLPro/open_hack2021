@@ -9,6 +9,9 @@ from sound_keyboard.keyboard.state_controller import (
 import cv2
 
 from sound_keyboard.face_gesture_detector.face_gesture_detector import (
+    EyeDirection,
+    EyeState,
+    MouseState,
     detect_gestures,
     Gestures
 )
@@ -24,7 +27,7 @@ class Keyboard:
     def __init__(self):
         # initialize app
         pygame.init()
-        pygame.display.set_caption('Smile!')
+        pygame.display.set_caption('Faceboard')
 
         # setting initial window size and set window resizable
         self.surface = pygame.display.set_mode((500, 500), pygame.RESIZABLE)
@@ -118,11 +121,18 @@ class Keyboard:
 
             pygame.display.update()
 
-            gestures: Gestures = None
+            gestures: Gestures = Gestures()
             ret, frame = self.cap.read()
 
             if ret:
                 gestures = detect_gestures(frame)
+            
+            if gestures is None:
+                gestures = Gestures()
+                gestures.eye_direction = EyeDirection.CENTER
+                gestures.left_eye_state = EyeState.OPEN
+                gestures.right_eye_state = EyeState.OPEN
+                gestures.mouse_state = MouseState.CLOSE
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -134,22 +144,39 @@ class Keyboard:
                         pygame.quit()
                         sys.exit()
                 
-                #TODO(hakomori64) replace current char using gesture
+                #TODO(hakomori64) remove it 
                 if event.type == pygame.KEYUP:
                     if event.key == pygame.K_LEFT:
-                        self.keyboard_state_controller.move(Direction.LEFT)
+                        # self.keyboard_state_controller.move(Direction.LEFT)
+                        gestures.eye_direction = EyeDirection.LEFT
                     if event.key == pygame.K_UP:
-                        self.keyboard_state_controller.move(Direction.UP)
+                        # self.keyboard_state_controller.move(Direction.UP)
+                        gestures.eye_direction = EyeDirection.UP
                     if event.key == pygame.K_RIGHT:
-                        self.keyboard_state_controller.move(Direction.RIGHT)
+                        # self.keyboard_state_controller.move(Direction.RIGHT)
+                        gestures.eye_direction = EyeDirection.RIGHT
                     if event.key == pygame.K_DOWN:
-                        self.keyboard_state_controller.move(Direction.DOWN)
+                        # self.keyboard_state_controller.move(Direction.DOWN)
+                        gestures.eye_direction = EyeDirection.DOWN
+                    if event.key == pygame.K_PAGEUP:
+                        gestures.left_eye_state = EyeState.CLOSE
+                    if event.key == pygame.K_PAGEDOWN:
+                        gestures.right_eye_state = EyeState.CLOSE
+                    if event.key == pygame.K_RETURN:
+                        gestures.mouse_state = MouseState.OPEN
+                    
 
 
             # Gesturesオブジェクトの状態を読み出して操作を確定する
-            if gestures is None:
-                continue
-                    
+            direction = gestures.eye_direction
+            if direction == EyeDirection.LEFT:
+                self.keyboard_state_controller.move(Direction.LEFT)
+            elif direction == EyeDirection.UP:
+                self.keyboard_state_controller.move(Direction.UP)
+            elif direction == EyeDirection.RIGHT:
+                self.keyboard_state_controller.move(Direction.RIGHT)
+            elif direction == EyeDirection.DOWN:
+                self.keyboard_state_controller.move(Direction.DOWN)
 
 if __name__ == '__main__':
     Keyboard().start()
