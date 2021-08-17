@@ -52,18 +52,27 @@ class KeyboardStateController:
         self.current_child_char = KEYMAP[self.kind]['parent'][0][0]
         self.current_parent_position = (0, 0) # (x, y)
         self.current_child_position = Direction.CENTER
-
-    def move(self, direction: Direction):
-        # move current parent char to direction
+    
+    def get_neighbor(self, direction: Direction):
         x, y = self.current_parent_position
         dx, dy = direction.value
 
         nx = (x + dx) % len(KEYMAP[self.kind]['parent'][0])
         ny = (y + dy) % len(KEYMAP[self.kind]['parent'])
+
+        return (
+            KEYMAP[self.kind]['parent'][ny][nx], # neighbor char
+            (nx, ny)
+        )
+
+    def move(self, direction: Direction):
+        # move current parent char to direction
+        char, (nx, ny) = self.get_neighbor(direction)
         
-        self.current_parent_char = self.current_child_char = KEYMAP[self.kind]['parent'][ny][nx]
+        self.current_parent_char = self.current_child_char = char
         self.current_parent_position = (nx, ny)
         self.current_child_position = Direction.CENTER
+    
 
     def move_child(self, direction: Direction):
 
@@ -75,9 +84,9 @@ class KeyboardStateController:
         else:
             self.current_child_position = Direction.CENTER
         
-        self.current_child_char = self.get_child(self.current_parent_char, self.current_child_position)
+        self.current_child_char = self.get_child_char(self.current_parent_char, self.current_child_position)
     
-    def get_child(self, parent_char, direction: Direction):
+    def get_child_char(self, parent_char, direction: Direction):
 
         index = 0
         if direction == Direction.CENTER:
