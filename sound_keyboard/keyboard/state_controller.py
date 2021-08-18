@@ -52,6 +52,9 @@ class KeyboardStateController:
         self.current_child_char = KEYMAP[self.kind]['parent'][0][0]
         self.current_parent_position = (0, 0) # (x, y)
         self.current_child_position = Direction.CENTER
+
+        self.selected_parent = False
+        self.text = ""
     
     def get_neighbor(self, direction: Direction):
         x, y = self.current_parent_position
@@ -65,7 +68,30 @@ class KeyboardStateController:
             (nx, ny)
         )
 
+    def back(self):
+        if self.selected_parent:
+            self.selected_parent = False
+        else:
+            self.text = self.text[:-1]
+    
+    def select(self):
+        if self.selected_parent:
+            #TODO 特殊文字が送られてきた場合は処理を加える
+            self.text += self.current_child_char
+            
+            self.move_parent(Direction.CENTER)
+
+        self.selected_parent = not self.selected_parent
+
+    
     def move(self, direction: Direction):
+        if not self.selected_parent:
+            self.move_parent(direction)
+        else:
+            self.move_child(direction)
+
+
+    def move_parent(self, direction: Direction):
         # move current parent char to direction
         char, (nx, ny) = self.get_neighbor(direction)
         
@@ -76,7 +102,7 @@ class KeyboardStateController:
 
     def move_child(self, direction: Direction):
 
-        x, y = self.current_child_position
+        x, y = self.current_child_position.value
         dx, dy = direction.value
 
         if (x + dx, y + dy) != (0, 0):
