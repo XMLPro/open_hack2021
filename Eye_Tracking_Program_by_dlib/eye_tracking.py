@@ -37,15 +37,19 @@ def get_gaze_ratio(eye_points, facial_landmarks):
     right_side_threshold = threshold_eye[0: height, int(width / 2): width]
     right_side_white = cv2.countNonZero(right_side_threshold)
 
+    under_side_threshold = threshold_eye[int(height/2):height, 0:width]
+    under_side_white = cv2.countNonZero(under_side_threshold)
+
+
     if left_side_white == 0:
-        gaze_ratio = -1
+        gaze_ratio = 0
     elif right_side_white == 0:
-        gaze_ratio = np.inf
+        gaze_ratio = 1
     else:
-        gaze_ratio = (left_side_white / (right_side_white+1)) / left_side_white
+        gaze_ratio = (left_side_white / (right_side_white+1)) / (left_side_white+right_side_white+1)
 
     # time.sleep(0.5)
-    return gaze_ratio
+    return gaze_ratio, under_side_white
 
 while True:
     _, frame = cap.read()
@@ -66,10 +70,12 @@ while True:
 
             landmarks = predictor(gray, face)
 
-            gaze_ratio_left_eye = get_gaze_ratio([36, 37, 38, 39, 40, 41], landmarks)
-            gaze_ratio_right_eye = get_gaze_ratio([42, 43, 44, 45, 46, 47], landmarks)
+            gaze_ratio_left_eye, under_left_eye = get_gaze_ratio([36, 37, 38, 39, 40, 41], landmarks)
+            gaze_ratio_right_eye, under_right_eye = get_gaze_ratio([42, 43, 44, 45, 46, 47], landmarks)
             print('gaze_ratio_left_eye', gaze_ratio_left_eye)
             print('gaze_ratio_right_eye', gaze_ratio_right_eye)
+            print('under_left_eye', under_left_eye)
+            print('under_right_eye', under_right_eye)
 
         # 瞳のトリミング処理
         # 右目：[36,,37,39, 40]　左目：[42, 43, 45, 46]
