@@ -244,7 +244,7 @@ class Keyboard:
             gestures.left_eye_state = EyeState.CLOSE
         if keys[pygame.K_PAGEDOWN]:
             gestures.right_eye_state = EyeState.CLOSE
-        if keys[pygame.K_RETURN]:
+        if keys[pygame.K_PAGEUP]:
             gestures.mouse_state = MouseState.OPEN
         if keys[pygame.K_ESCAPE]:
             pygame.quit()
@@ -253,6 +253,8 @@ class Keyboard:
         state_updated = False
         if self.delay <= 0:
             state_updated = self.updateKeyboardState(gestures)
+        
+        self.previous_gestures = gestures
         
         return state_updated
         
