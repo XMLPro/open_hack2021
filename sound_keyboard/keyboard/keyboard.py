@@ -5,6 +5,9 @@ import time
 from utils import (
     convert_eye_direction_to_direction
 )
+from sound_keyboard.queue import (
+    get_queue
+)
 from sound_keyboard.keyboard.state_controller import (
     KEYMAP,
     KeyboardStateController,
@@ -17,8 +20,7 @@ from sound_keyboard.sound.sound import (
 from sound_keyboard.face_gesture_detector.face_gesture_detector import (
     EyeDirection,
     EyeState,
-    MouseState,
-    detect_gestures,
+    MouthState,
     Gestures
 )
 
@@ -32,7 +34,9 @@ MAX_DELAY = 0.1
 FONT_PATH = 'fonts/Noto_Sans_JP/NotoSansJP-Regular.otf'
 
 class Keyboard:
-    def __init__(self):
+    def __init__(self, queue):
+
+        self.queue = queue
         # initialize app
         pygame.init()
         pygame.display.set_caption('Faceboard')
@@ -153,7 +157,7 @@ class Keyboard:
             self.keyboard_state_controller.select()
             return True
         
-        if (self.previous_gestures is None or self.previous_gestures.mouse_state == MouseState.CLOSE) and gestures.mouse_state == MouseState.OPEN:
+        if (self.previous_gestures is None or self.previous_gestures.mouth_state == MouthState.CLOSE) and gestures.mouth_state == MouthState.OPEN:
             read_aloud(self.keyboard_state_controller.text)
             self.keyboard_state_controller.clear()
             return True
@@ -191,7 +195,6 @@ class Keyboard:
                 0 if char == current_char else 1
             )
 
-    
     def draw(self):
 
         # show parent view
@@ -213,21 +216,23 @@ class Keyboard:
     
     def update(self):
 
-        gestures: Gestures = Gestures()
-        ret, frame = self.cap.read()
-
-        if not ret:
-            return
-
-        gestures = detect_gestures(frame)
+        gestures: Gestures = None
+        while not self.queue.empty():
+            g, enqueued_at = self.queue.get()
+            now = time.time()
+            # print('received gestures enqueued at: ', enqueued_at, 'now: ', now)
+            if now - enqueued_at <= 0.3:
+                gestures = g
+                break
 
         # for debug
         if gestures is None:
-            gestures = Gestures()
-            gestures.eye_direction = EyeDirection.CENTER
-            gestures.left_eye_state = EyeState.OPEN
-            gestures.right_eye_state = EyeState.OPEN
-            gestures.mouse_state = MouseState.CLOSE
+            gestures = Gestures(
+                eye_direction = EyeDirection.CENTER,
+                left_eye_state = EyeState.OPEN,
+                right_eye_state = EyeState.OPEN,
+                mouth_state = MouthState.CLOSE,
+            )
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -253,7 +258,7 @@ class Keyboard:
         if keys[pygame.K_PAGEDOWN]:
             gestures.right_eye_state = EyeState.CLOSE
         if keys[pygame.K_RETURN]:
-            gestures.mouse_state = MouseState.OPEN
+            gestures.mouth_state = MouthState.OPEN
         if keys[pygame.K_ESCAPE]:
             pygame.quit()
             sys.exit()
@@ -266,8 +271,7 @@ class Keyboard:
         
         return state_updated
         
-
-    def start(self):
+    def run(self):
 
         while True:
             
@@ -284,4 +288,5 @@ class Keyboard:
 
 
 if __name__ == '__main__':
-    Keyboard().start()
+    queue = get_queue()
+    Keyboard(queue).run()
