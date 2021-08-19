@@ -1,4 +1,7 @@
 from enum import Enum
+from sound_keyboard.keyboard.utils.jp_char_util import (
+    add_jp_char
+)
 
 class State(Enum):
     JAPANESE = 1
@@ -31,7 +34,7 @@ JP_CHILDREN_KEY_MAP = {
     'ま': ['ま', 'み', 'む', 'め', 'も'],
     'や': ['や', '(' , 'ゆ', ')' , 'よ'],
     'ら': ['ら', 'り', 'る', 'れ', 'ろ'],
-    '小': ['小', '濁', '小', '半', ' ' ],
+    '小': ['小', '濁', '小', '半', ''  ],
     'わ': ['わ', 'を', 'ん', 'ー', '〜'],
     '、': ['、', '。', '？', '！', '…'],
 }
@@ -39,7 +42,8 @@ JP_CHILDREN_KEY_MAP = {
 KEYMAP = {
     State.JAPANESE: {
         'parent': JP_KEY_MAP,
-        'children': JP_CHILDREN_KEY_MAP
+        'children': JP_CHILDREN_KEY_MAP,
+        'add_char': add_jp_char
     }
 }
 
@@ -52,6 +56,9 @@ class KeyboardStateController:
         self.current_child_char = KEYMAP[self.kind]['parent'][0][0]
         self.current_parent_position = (0, 0) # (x, y)
         self.current_child_position = Direction.CENTER
+
+        self.selected_parent = False
+        self.text = ""
     
     def get_neighbor(self, direction: Direction):
         x, y = self.current_parent_position
@@ -64,8 +71,34 @@ class KeyboardStateController:
             KEYMAP[self.kind]['parent'][ny][nx], # neighbor char
             (nx, ny)
         )
+    
+    def clear(self):
+        self.text = ""
+        self.move_parent(Direction.CENTER)
+        self.selected_parent = False
 
+    def back(self):
+        if self.selected_parent:
+            self.selected_parent = False
+        else:
+            self.text = self.text[:-1]
+    
+    def select(self):
+        if self.selected_parent:
+            self.text = KEYMAP[self.kind]['add_char'](self.text, self.current_child_char)
+            self.move_parent(Direction.CENTER)
+
+        self.selected_parent = not self.selected_parent
+
+    
     def move(self, direction: Direction):
+        if not self.selected_parent:
+            self.move_parent(direction)
+        else:
+            self.move_child(direction)
+
+
+    def move_parent(self, direction: Direction):
         # move current parent char to direction
         char, (nx, ny) = self.get_neighbor(direction)
         
@@ -76,7 +109,7 @@ class KeyboardStateController:
 
     def move_child(self, direction: Direction):
 
-        x, y = self.current_child_position
+        x, y = self.current_child_position.value
         dx, dy = direction.value
 
         if (x + dx, y + dy) != (0, 0):

@@ -1,3 +1,5 @@
 # Pipenv
 Pipfile.lock
 .vscode
+
+__pycache__/
