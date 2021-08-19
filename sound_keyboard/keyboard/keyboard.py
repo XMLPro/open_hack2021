@@ -10,6 +10,9 @@ from sound_keyboard.keyboard.state_controller import (
     KeyboardStateController,
     Direction
 )
+from sound_keyboard.sound.sound import (
+    read_aloud
+)
 
 from sound_keyboard.face_gesture_detector.face_gesture_detector import (
     EyeDirection,
@@ -140,18 +143,18 @@ class Keyboard:
             self.keyboard_state_controller.move(direction)
             return True
         
-        if gestures.left_eye_state == EyeState.CLOSE and gestures.right_eye_state == EyeState.OPEN:
+        if (self.previous_gestures is None or self.previous_gestures.left_eye_state == EyeState.OPEN) and gestures.left_eye_state == EyeState.CLOSE:
             # back
             self.keyboard_state_controller.back()
             return True
         
-        if (self.previous_gestures is None or self.previous_gestures.right_eye_state == EyeState.CLOSE) and gestures.right_eye_state == EyeState.OPEN:
+        if (self.previous_gestures is None or self.previous_gestures.right_eye_state == EyeState.OPEN) and gestures.right_eye_state == EyeState.CLOSE:
             # select
             self.keyboard_state_controller.select()
             return True
         
         if (self.previous_gestures is None or self.previous_gestures.mouse_state == MouseState.CLOSE) and gestures.mouse_state == MouseState.OPEN:
-            #TODO say words here
+            read_aloud(self.keyboard_state_controller.text)
             self.keyboard_state_controller.clear()
             return True
         
