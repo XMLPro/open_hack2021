@@ -145,9 +145,14 @@ class Keyboard:
             self.keyboard_state_controller.back()
             return True
         
-        if (self.previous_gestures is None or self.previous_gestures.mouse_state == MouseState.CLOSE) and gestures.mouse_state == MouseState.OPEN:
+        if (self.previous_gestures is None or self.previous_gestures.right_eye_state == EyeState.CLOSE) and gestures.right_eye_state == EyeState.OPEN:
             # select
             self.keyboard_state_controller.select()
+            return True
+        
+        if (self.previous_gestures is None or self.previous_gestures.mouse_state == MouseState.CLOSE) and gestures.mouse_state == MouseState.OPEN:
+            #TODO say words here
+            self.keyboard_state_controller.clear()
             return True
         
         return False
@@ -244,7 +249,7 @@ class Keyboard:
             gestures.left_eye_state = EyeState.CLOSE
         if keys[pygame.K_PAGEDOWN]:
             gestures.right_eye_state = EyeState.CLOSE
-        if keys[pygame.K_PAGEUP]:
+        if keys[pygame.K_RETURN]:
             gestures.mouse_state = MouseState.OPEN
         if keys[pygame.K_ESCAPE]:
             pygame.quit()

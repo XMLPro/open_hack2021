@@ -1,4 +1,7 @@
 from enum import Enum
+from sound_keyboard.keyboard.utils.jp_char_util import (
+    add_jp_char
+)
 
 class State(Enum):
     JAPANESE = 1
@@ -31,7 +34,7 @@ JP_CHILDREN_KEY_MAP = {
     'ま': ['ま', 'み', 'む', 'め', 'も'],
     'や': ['や', '(' , 'ゆ', ')' , 'よ'],
     'ら': ['ら', 'り', 'る', 'れ', 'ろ'],
-    '小': ['小', '濁', '小', '半', ' ' ],
+    '小': ['小', '濁', '小', '半', ''  ],
     'わ': ['わ', 'を', 'ん', 'ー', '〜'],
     '、': ['、', '。', '？', '！', '…'],
 }
@@ -39,7 +42,8 @@ JP_CHILDREN_KEY_MAP = {
 KEYMAP = {
     State.JAPANESE: {
         'parent': JP_KEY_MAP,
-        'children': JP_CHILDREN_KEY_MAP
+        'children': JP_CHILDREN_KEY_MAP,
+        'add_char': add_jp_char
     }
 }
 
@@ -67,6 +71,11 @@ class KeyboardStateController:
             KEYMAP[self.kind]['parent'][ny][nx], # neighbor char
             (nx, ny)
         )
+    
+    def clear(self):
+        self.text = ""
+        self.move_parent(Direction.CENTER)
+        self.selected_parent = False
 
     def back(self):
         if self.selected_parent:
@@ -76,9 +85,7 @@ class KeyboardStateController:
     
     def select(self):
         if self.selected_parent:
-            #TODO 特殊文字が送られてきた場合は処理を加える
-            self.text += self.current_child_char
-            
+            self.text = KEYMAP[self.kind]['add_char'](self.text, self.current_child_char)
             self.move_parent(Direction.CENTER)
 
         self.selected_parent = not self.selected_parent
