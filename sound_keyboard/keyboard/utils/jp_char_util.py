@@ -1,5 +1,18 @@
 import unicodedata
 
+TO_LOWER = {
+    'あ': 'ぁ',
+    'い': 'ぃ',
+    'う': 'ぅ',
+    'え': 'ぇ',
+    'お': 'ぉ',
+    'や': 'ゃ',
+    'ゆ': 'ゅ',
+    'よ': 'ょ'
+}
+
+TO_UPPER = { v: k for k, v in TO_LOWER.items() }
+
 def is_voicing_diacritic(char):
 
     return char.encode('utf-8') in [
@@ -44,11 +57,18 @@ def add_devoicing_diacritic(char):
     
     return out
 
+def change_case(char):
+    if char in TO_LOWER.keys():
+        return TO_LOWER[char]
+    elif char in TO_UPPER.keys():
+        return TO_UPPER[char]
+    else:
+        # 変換できないものはそのまま返す
+        return char
+
 def add_jp_char(text, char):
     out = text
-    if char == '小':
-        pass
-    elif char == '濁':
+    if char == '濁':
         if is_devoicing_diacritic(text[-1]):
             text = text[:-1]
 
@@ -68,7 +88,7 @@ def add_jp_char(text, char):
             # 濁点をつける
             out = text[:-1] + add_devoicing_diacritic(text[-1])
     elif char == '小':
-        pass
+        out = text[:-1] + change_case(text[-1])
 
     else:
         out += char
