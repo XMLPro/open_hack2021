@@ -68,7 +68,7 @@ def add_jp_char(text, char):
             # 濁点をつける
             out = text[:-1] + add_devoicing_diacritic(text[-1])
     elif char == '小':
-        if 
+        pass
 
     else:
         out += char
