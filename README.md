@@ -20,7 +20,7 @@ Pipfileにしたがって依存をすべてインストールしたい場合は`
 # キーボードの実行
 
 ```
-pipenv run keyboard
+pipenv run faceboard
 ```
 
 Pipfileにscriptsとして登録されています。他にもショートカットを設定したい場合はここを利用してください。
