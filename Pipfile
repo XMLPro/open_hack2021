@@ -17,4 +17,4 @@ mpg123 = "*"
 python_version = "3.8"
 
 [scripts]
-keyboard = "bash -c \"export PYTHONPATH=${PWD} && python3 sound_keyboard/keyboard/keyboard.py\""
+faceboard = "bash -c \"export PYTHONPATH=${PWD} && python3 entry.py\""
