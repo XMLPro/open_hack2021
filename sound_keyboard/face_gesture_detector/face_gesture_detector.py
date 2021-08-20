@@ -172,8 +172,8 @@ class FaceGestureDetector:
             gaze_right_level = (left_gaze_right_level + right_gaze_right_level) / 2
             left_blink_state = self.get_eye_blink_state(frame, landmarks, [42, 43, 45, 46])
             right_blink_state = self.get_eye_blink_state(frame, landmarks, [36, 37, 39, 40])
-            if left_blink_state == EyeState.CLOSE:
-                print('blink!!')
+            print('right_blink_state', right_blink_state)
+            print('left_blink_state', left_blink_state)
 
 
             if self.queue.full():
