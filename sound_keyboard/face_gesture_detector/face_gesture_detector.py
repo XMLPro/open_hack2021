@@ -104,7 +104,7 @@ class FaceGestureDetector:
 
         return gaze_right_level, under_side_white
 
-    def preprocess(self, frame):
+    def gaze_preprocess(self, frame):
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
         #ランドマーク
@@ -121,12 +121,38 @@ class FaceGestureDetector:
         landmarks = self.predictor(gray, face)
         return landmarks, gray
 
+    def get_eye_blink_state(self, frame, landmarks, facial_landmarks):
+        x = [0 for i in range(len(facial_landmarks))]
+        y = [0 for i in range(len(facial_landmarks))]
+
+        for i, facial_landmark in enumerate(facial_landmarks):
+            x[i] = landmarks.part(facial_landmark).x
+            y[i] = landmarks.part(facial_landmark).y
+
+        trim_val = 2
+        frame_trim = frame[y[1]-trim_val:y[3]+trim_val,x[0]:x[2]]
+        height, width = frame_trim.shape[0],frame_trim.shape[1]
+        frame_trim_resize = cv2.resize(frame_trim , (int(width*7.0), int(height*7.0)))
+        # gray scale
+        frame_gray = cv2.cvtColor(frame_trim_resize, cv2.COLOR_BGR2GRAY)
+        # 平滑化
+        frame_gray = cv2.GaussianBlur(frame_gray,(7,7),0)
+        # 二値化
+        thresh = 80
+        maxval = 255
+        e_th, frame_black_white = cv2.threshold(frame_gray,thresh,maxval,cv2.THRESH_BINARY_INV)
+        eye_contours, _ = cv2.findContours(frame_black_white, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+        if len(eye_contours) == 0:
+            return EyeState.CLOSE
+        return EyeState.OPEN
+
     def run(self):
         # この関数のwhile True:下でcapから画像を取得して、ジェスチャーを判別、
         # queueに(Gestureオブジェクト、time.time())の形でジェスチャーを入れていってください。
         while True:
             _, frame = self.cap.read()
-            landmarks, gray = self.preprocess(frame)
+            landmarks, gray = self.gaze_preprocess(frame)
             if landmarks == -1 and gray == -1:
                 continue
             left_facial_landmarks = [36, 37, 38, 39, 40, 41]
@@ -144,7 +170,11 @@ class FaceGestureDetector:
                 gray
             )
             gaze_right_level = (left_gaze_right_level + right_gaze_right_level) / 2
-            print(gaze_right_level)
+            left_blink_state = self.get_eye_blink_state(frame, landmarks, [42, 43, 45, 46])
+            right_blink_state = self.get_eye_blink_state(frame, landmarks, [36, 37, 39, 40])
+            if left_blink_state == EyeState.CLOSE:
+                print('blink!!')
+
 
             if self.queue.full():
                 self.queue.queue.clear()
@@ -152,8 +182,8 @@ class FaceGestureDetector:
             #TODO(inazuma110, nadeemishikawa) 適当な値ではなく、ちゃんと画像からの検知に基づいてプロパティをセットしたGesturesクラスのオブジェクトを入れる
             self.queue.put((Gestures(
                 eye_direction=self.get_gaze_state(gaze_right_level),
-                left_eye_state=EyeState.OPEN,
-                right_eye_state=EyeState.OPEN,
+                left_eye_state=left_blink_state,
+                right_eye_state=right_blink_state,
                 mouth_state=MouthState.CLOSE,
             ), time.time()))
 
