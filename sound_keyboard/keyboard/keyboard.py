@@ -1,30 +1,45 @@
 import pygame
 import sys
-import os
+import cv2
+import time
+from utils import (
+    convert_eye_direction_to_direction
+)
+from sound_keyboard.queue import (
+    get_queue
+)
 from sound_keyboard.keyboard.state_controller import (
     KEYMAP,
     KeyboardStateController,
     Direction
 )
-import cv2
+from sound_keyboard.sound.sound import (
+    read_aloud
+)
 
 from sound_keyboard.face_gesture_detector.face_gesture_detector import (
-    detect_gestures,
+    EyeDirection,
+    EyeState,
+    MouthState,
     Gestures
 )
 
 # constants
 BACKGROUND_COLOR = (242, 242, 242)
-KEYTILE_COLOR = (150, 150, 150)
+KEYTILE_COLOR = (220, 220, 220)
+OVERLAY_COLOR = (0, 0, 0, 180)
 FONT_COLOR = (12, 9, 10)
+MAX_DELAY = 0.1
 
 FONT_PATH = 'fonts/Noto_Sans_JP/NotoSansJP-Regular.otf'
 
 class Keyboard:
-    def __init__(self):
+    def __init__(self, queue):
+
+        self.queue = queue
         # initialize app
         pygame.init()
-        pygame.display.set_caption('Smile!')
+        pygame.display.set_caption('Faceboard')
 
         # setting initial window size and set window resizable
         self.surface = pygame.display.set_mode((500, 500), pygame.RESIZABLE)
@@ -33,6 +48,10 @@ class Keyboard:
         self.keyboard_state_controller = KeyboardStateController()
 
         self.cap = cv2.VideoCapture(0)
+
+        # state
+        self.previous_gestures = None
+        self.delay = 0
     
     def draw_text(self, char_info):
         char, pos, size = char_info
@@ -48,13 +67,13 @@ class Keyboard:
         width = self.surface.get_width()
         height = self.surface.get_height()
 
-        left = (width / 6, height / 2)
-        up = (width / 2, height / 6)
-        right = (width * 5 / 6, height / 2)
-        down = (width / 2, height * 5 / 6)
+        left = (width / 8, height / 2)
+        up = (width / 2, height / 8)
+        right = (width * 7 / 8, height / 2)
+        down = (width / 2, height * 7 / 8)
 
-        center_font_size = int(min(width, height) / 10)
-        other_font_size = int(center_font_size * 4 / 10)
+        center_font_size = int(min(width, height) / 12)
+        other_font_size = int(center_font_size * 4 / 12)
 
         chars = [
             (self.keyboard_state_controller.get_neighbor(Direction.LEFT)[0], left, other_font_size),
@@ -66,11 +85,9 @@ class Keyboard:
         for char in chars:
             self.draw_text(char)
     
-    def draw_tile(self, tile_info):
-        char, pos, isFocused = tile_info
-        pygame.draw.rect(self.surface, KEYTILE_COLOR, pos, isFocused)
-        left, top, width, height = pos
-        self.draw_text((char, (left + width / 2, top + height / 2), 15))
+    def draw_tile(self, char, center, radius, tile_color, border_size):
+        pygame.draw.circle(self.surface, tile_color, center, radius, border_size)
+        self.draw_text((char, center, 15))
 
     def draw_keyboard(self):
         kind = self.keyboard_state_controller.kind
@@ -95,61 +112,181 @@ class Keyboard:
         else:
             cell_size = min(cell_size, int(width / col_num))
         
-        keyboard_width = cell_size * col_num
-        keyboard_height = cell_size * row_num
+        padding = 5
+        
+        keyboard_width = cell_size * col_num + padding * (col_num - 1)
+        keyboard_height = cell_size * row_num + padding * (row_num - 1)
 
         left = width / 2 - keyboard_width / 2
         top = height / 2 - keyboard_height / 2
 
         for i, row in enumerate(keymap):
             for j, char in enumerate(row):
-                tile_left = left + j * cell_size
-                tile_top = top + i * cell_size
-                self.draw_tile((char, (tile_left, tile_top, cell_size, cell_size), char == self.keyboard_state_controller.current_parent_char))
+                x = left + j * cell_size + (padding * j) + cell_size // 2
+                y = top + i * cell_size + (padding * i) + cell_size // 2
+                is_focused = char == self.keyboard_state_controller.current_parent_char
+                # self.draw_tile(
+                #    (char, (x, y), cell_size / 2, is_focused))
+                self.draw_tile(
+                    char,
+                    (x, y),
+                    cell_size / 2,
+                    KEYTILE_COLOR if is_focused else BACKGROUND_COLOR,
+                    3 if is_focused else 1
+                )
+        
+        # draw currently selected text
+        self.draw_text((self.keyboard_state_controller.text, (width / 2, top - 10), 20))
 
-    def start(self):
+    def updateKeyboardState(self, gestures: Gestures):
+
+        # Gesturesオブジェクトの状態を読み出して操作を確定する
+
+        if gestures.eye_direction != EyeDirection.CENTER:
+            direction = convert_eye_direction_to_direction(gestures.eye_direction)
+            self.keyboard_state_controller.move(direction)
+            return True
+        
+        if (self.previous_gestures is None or self.previous_gestures.left_eye_state == EyeState.OPEN) and gestures.left_eye_state == EyeState.CLOSE:
+            # back
+            self.keyboard_state_controller.back()
+            return True
+        
+        if (self.previous_gestures is None or self.previous_gestures.right_eye_state == EyeState.OPEN) and gestures.right_eye_state == EyeState.CLOSE:
+            # select
+            self.keyboard_state_controller.select()
+            return True
+        
+        if (self.previous_gestures is None or self.previous_gestures.mouth_state == MouthState.CLOSE) and gestures.mouth_state == MouthState.OPEN:
+            read_aloud(self.keyboard_state_controller.text)
+            self.keyboard_state_controller.clear()
+            return True
+        
+        return False
+    
+    def draw_child_keyboard(self):
+        
+        width = self.surface.get_width()
+        height = self.surface.get_height()
+
+        cell_size = int(min(width, height) / 10)
+
+        center_char = self.keyboard_state_controller.current_parent_char
+        current_char = self.keyboard_state_controller.current_child_char
+
+        padding = 5
+        self.draw_tile(
+            center_char,
+            (width / 2, height / 2),
+            cell_size / 2,
+            BACKGROUND_COLOR if center_char == current_char else KEYTILE_COLOR,
+            0 if center_char == current_char else 1
+        )
+        
+        for direction in Direction:
+
+            char = self.keyboard_state_controller.get_child_char(center_char, direction)
+            x, y = direction.value
+            self.draw_tile(
+                char,
+                (width / 2 + (cell_size + padding) * x, height / 2 + (cell_size + padding) * y),
+                cell_size / 2,
+                BACKGROUND_COLOR if char == current_char else KEYTILE_COLOR,
+                0 if char == current_char else 1
+            )
+
+    def draw(self):
+
+        # show parent view
+        self.surface.fill(BACKGROUND_COLOR)
+
+        self.draw_keyboard()
+        self.draw_around()
+        
+        if self.keyboard_state_controller.selected_parent:
+            # show overlay
+            self.overlay = pygame.Surface([self.surface.get_width(), self.surface.get_height()], pygame.SRCALPHA, 32)
+            self.overlay.convert_alpha()
+            self.overlay.fill(OVERLAY_COLOR)
+            self.surface.blit(self.overlay, (0, 0))
+            self.draw_child_keyboard()
+
+        
+        pygame.display.update()
+    
+    def update(self):
+
+        gestures: Gestures = None
+        while not self.queue.empty():
+            g, enqueued_at = self.queue.get()
+            now = time.time()
+            # print('received gestures enqueued at: ', enqueued_at, 'now: ', now)
+            if now - enqueued_at <= 0.3:
+                gestures = g
+                break
+
+        # for debug
+        if gestures is None:
+            gestures = Gestures(
+                eye_direction = EyeDirection.CENTER,
+                left_eye_state = EyeState.OPEN,
+                right_eye_state = EyeState.OPEN,
+                mouth_state = MouthState.CLOSE,
+            )
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()    
+            
+        #TODO(hakomori64) remove it 
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_LEFT]:
+            # self.keyboard_state_controller.move(Direction.LEFT)
+            gestures.eye_direction = EyeDirection.LEFT
+        if keys[pygame.K_UP]:
+            # self.keyboard_state_controller.move(Direction.UP)
+            gestures.eye_direction = EyeDirection.UP
+        if keys[pygame.K_RIGHT]:
+            # self.keyboard_state_controller.move(Direction.RIGHT)
+            gestures.eye_direction = EyeDirection.RIGHT
+        if keys[pygame.K_DOWN]:
+            # self.keyboard_state_controller.move(Direction.DOWN)
+            gestures.eye_direction = EyeDirection.DOWN
+        if keys[pygame.K_PAGEUP]:
+            gestures.left_eye_state = EyeState.CLOSE
+        if keys[pygame.K_PAGEDOWN]:
+            gestures.right_eye_state = EyeState.CLOSE
+        if keys[pygame.K_RETURN]:
+            gestures.mouth_state = MouthState.OPEN
+        if keys[pygame.K_ESCAPE]:
+            pygame.quit()
+            sys.exit()
+        
+        state_updated = False
+        if self.delay <= 0:
+            state_updated = self.updateKeyboardState(gestures)
+        
+        self.previous_gestures = gestures
+        
+        return state_updated
+        
+    def run(self):
 
         while True:
             
-            self.surface.fill(BACKGROUND_COLOR)
+            start = time.time()
 
-            self.draw_keyboard()
-            self.draw_around()
+            self.draw()
+            state_updated = self.update()
 
-            pygame.display.update()
+            frame_time = time.time() - start
+            if state_updated:
+                self.delay = MAX_DELAY
+            else:
+                self.delay = max(self.delay - frame_time, 0)
 
-            gestures: Gestures = None
-            ret, frame = self.cap.read()
-
-            if ret:
-                gestures = detect_gestures(frame)
-
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    pygame.quit()
-                    sys.exit()
-                
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_ESCAPE:
-                        pygame.quit()
-                        sys.exit()
-                
-                #TODO(hakomori64) replace current char using gesture
-                if event.type == pygame.KEYUP:
-                    if event.key == pygame.K_LEFT:
-                        self.keyboard_state_controller.move(Direction.LEFT)
-                    if event.key == pygame.K_UP:
-                        self.keyboard_state_controller.move(Direction.UP)
-                    if event.key == pygame.K_RIGHT:
-                        self.keyboard_state_controller.move(Direction.RIGHT)
-                    if event.key == pygame.K_DOWN:
-                        self.keyboard_state_controller.move(Direction.DOWN)
-
-
-            # Gesturesオブジェクトの状態を読み出して操作を確定する
-            if gestures is None:
-                continue
-                    
 
 if __name__ == '__main__':
-    Keyboard().start()
+    queue = get_queue()
+    Keyboard(queue).run()
