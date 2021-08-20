@@ -4,6 +4,7 @@ from sound_keyboard.queue import get_queue
 import cv2
 import dlib
 import numpy as np
+from math import hypot
 
 class EyeDirection(Enum):
     CENTER = 0 # とれる？とれたら
@@ -42,6 +43,32 @@ class FaceGestureDetector:
             return EyeDirection.RIGHT
         return EyeDirection.CENTER
 
+    def get_mouth_state(self, mouth_ratio):
+        if mouth_ratio > 6.8:
+            return MouthState.CLOSE
+        else:
+            return MouthState.OPEN
+
+
+    #ランドマークの重心
+    def midpoint(self, p1, p2):
+        return int((p1.x + p2.x) / 2), int((p1.y + p2.y) / 2)
+
+    #口開閉検知
+    def get_mouth_ratio(self, eye_points, facial_landmarks):
+        left_point = (facial_landmarks.part(eye_points[0]).x, facial_landmarks.part(eye_points[0]).y)
+        right_point = (facial_landmarks.part(eye_points[3]).x, facial_landmarks.part(eye_points[3]).y)
+        center_top = self.midpoint(facial_landmarks.part(eye_points[1]), facial_landmarks.part(eye_points[2]))
+        center_bottom = self.midpoint(facial_landmarks.part(eye_points[5]), facial_landmarks.part(eye_points[4]))
+
+        # hor_line = cv2.line(frame, left_point, right_point, (0, 255, 0), 2)
+        # ver_line = cv2.line(frame, center_top, center_bottom, (0, 255, 0), 2)
+
+        hor_line_lenght = hypot((left_point[0] - right_point[0]), (left_point[1] - right_point[1]))
+        ver_line_lenght = hypot((center_top[0] - center_bottom[0]), (center_top[1] - center_bottom[1]))
+
+        ratio = hor_line_lenght / ver_line_lenght
+        return ratio
 
     # 視線検知
     def get_gaze_right_level(self, eye_points, facial_landmarks, frame, gray):
@@ -143,6 +170,15 @@ class FaceGestureDetector:
                 frame,
                 gray
             )
+            #口の開閉度測定
+            faces = self.detector(gray)
+            for face in faces:
+                mouth_landmarks = [60, 61, 63, 64, 65, 67, 68]
+                mouth_ratio = self.get_mouth_ratio(mouth_landmarks, landmarks)
+                print(f"mouth_ratio : {mouth_ratio}")
+
+
+
             gaze_right_level = (left_gaze_right_level + right_gaze_right_level) / 2
             print(gaze_right_level)
 
@@ -154,7 +190,7 @@ class FaceGestureDetector:
                 eye_direction=self.get_gaze_state(gaze_right_level),
                 left_eye_state=EyeState.OPEN,
                 right_eye_state=EyeState.OPEN,
-                mouth_state=MouthState.CLOSE,
+                mouth_state=self.get_mouth_state(mouth_ratio),
             ), time.time()))
 
 if __name__ == '__main__':
