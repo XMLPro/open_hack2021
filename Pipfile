@@ -18,3 +18,5 @@ python_version = "3.8"
 
 [scripts]
 faceboard = "bash -c \"export PYTHONPATH=${PWD} && python3 entry.py\""
+keyboard = "bash -c \"export PYTHONPATH=${PWD} && python3 sound_keyboard/keyboard/keyboard.py\""
+detector = "bash -c \"export PYTHONPATH=${PWD} && python3 sound_keyboard/face_gesture_detector/face_gesture_detector.py\""
