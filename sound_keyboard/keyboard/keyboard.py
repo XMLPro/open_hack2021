@@ -26,7 +26,7 @@ from sound_keyboard.face_gesture_detector.face_gesture_detector import (
 
 # constants
 BACKGROUND_COLOR = (242, 242, 242)
-KEYTILE_COLOR = (220, 220, 220)
+KEYTILE_COLOR = (242, 242, 242)
 OVERLAY_COLOR = (0, 0, 0, 180)
 FONT_COLOR = (12, 9, 10)
 MAX_DELAY = 0.1
@@ -85,9 +85,9 @@ class Keyboard:
         for char in chars:
             self.draw_text(char)
     
-    def draw_tile(self, char, center, radius, tile_color, border_size):
+    def draw_tile(self, char, center, radius, tile_color, border_size, font_size = 15):
         pygame.draw.circle(self.surface, tile_color, center, radius, border_size)
-        self.draw_text((char, center, 15))
+        self.draw_text((char, center, font_size))
 
     def draw_keyboard(self):
         kind = self.keyboard_state_controller.kind
@@ -131,8 +131,9 @@ class Keyboard:
                     char,
                     (x, y),
                     cell_size / 2,
-                    KEYTILE_COLOR if is_focused else BACKGROUND_COLOR,
-                    3 if is_focused else 1
+                    KEYTILE_COLOR,
+                    0,
+                    font_size = 25 if is_focused else 15
                 )
         
         # draw currently selected text
@@ -175,24 +176,17 @@ class Keyboard:
         current_char = self.keyboard_state_controller.current_child_char
 
         padding = 5
-        self.draw_tile(
-            center_char,
-            (width / 2, height / 2),
-            cell_size / 2,
-            BACKGROUND_COLOR if center_char == current_char else KEYTILE_COLOR,
-            0 if center_char == current_char else 1
-        )
         
         for direction in Direction:
-
             char = self.keyboard_state_controller.get_child_char(center_char, direction)
             x, y = direction.value
             self.draw_tile(
                 char,
                 (width / 2 + (cell_size + padding) * x, height / 2 + (cell_size + padding) * y),
-                cell_size / 2,
-                BACKGROUND_COLOR if char == current_char else KEYTILE_COLOR,
-                0 if char == current_char else 1
+                cell_size / 2 + 5 if char == current_char else 0,
+                KEYTILE_COLOR,
+                0,
+                font_size = 25 if char == current_char else 15
             )
 
     def draw(self):
@@ -200,17 +194,12 @@ class Keyboard:
         # show parent view
         self.surface.fill(BACKGROUND_COLOR)
 
-        self.draw_keyboard()
-        self.draw_around()
-        
         if self.keyboard_state_controller.selected_parent:
-            # show overlay
-            self.overlay = pygame.Surface([self.surface.get_width(), self.surface.get_height()], pygame.SRCALPHA, 32)
-            self.overlay.convert_alpha()
-            self.overlay.fill(OVERLAY_COLOR)
-            self.surface.blit(self.overlay, (0, 0))
             self.draw_child_keyboard()
-
+        else:
+            self.draw_keyboard()
+            self.draw_around()
+            
         
         pygame.display.update()
     
