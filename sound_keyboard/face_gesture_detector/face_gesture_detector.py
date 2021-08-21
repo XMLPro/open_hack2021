@@ -4,6 +4,7 @@ from sound_keyboard.queue import get_queue
 import cv2
 import dlib
 import numpy as np
+import sys
 
 class EyeDirection(Enum):
     CENTER = 0 # とれる？とれたら
@@ -34,11 +35,12 @@ class FaceGestureDetector:
         self.queue = queue
         self.detector = dlib.get_frontal_face_detector()
         self.predictor = dlib.shape_predictor("./sound_keyboard/face_gesture_detector/shape_predictor_68_face_landmarks.dat")
+        self.debug = sys.argv[1] == 'DEBUG'
 
     def get_gaze_state(self, x):
-        if x <= 0.4:
+        if x <= 0.54:
             return EyeDirection.LEFT
-        if x >= 0.7:
+        if x >= 0.57:
             return EyeDirection.RIGHT
         return EyeDirection.CENTER
 
@@ -133,6 +135,8 @@ class FaceGestureDetector:
         frame_trim = frame[y[1]-trim_val:y[3]+trim_val,x[0]:x[2]]
         height, width = frame_trim.shape[0],frame_trim.shape[1]
         frame_trim_resize = cv2.resize(frame_trim , (int(width*7.0), int(height*7.0)))
+        if self.debug:
+            cv2.imshow("eye trim",frame_trim_resize)
         # gray scale
         frame_gray = cv2.cvtColor(frame_trim_resize, cv2.COLOR_BGR2GRAY)
         # 平滑化
@@ -145,6 +149,9 @@ class FaceGestureDetector:
 
         if len(eye_contours) == 0:
             return EyeState.CLOSE
+        # (rx, ry, rw, rh) = cv2.boundingRect(eye_contours[0])
+        # cv2.circle(frame_trim_resize, (int(rx+rw/2), int(ry+rh/2)), int((rw+rh)/4), (255, 0, 0), 2) #円で表示
+        # cv2.circle(frame, (int(x[0]+(rx+rw)/10), int(y[1]-3+(ry+rh)/10)), int((rw+rh)/20), (0, 255, 0), 1)    #元画像に表示
         return EyeState.OPEN
 
     def run(self):
@@ -155,14 +162,14 @@ class FaceGestureDetector:
             landmarks, gray = self.gaze_preprocess(frame)
             if landmarks == -1 and gray == -1:
                 continue
-            left_facial_landmarks = [36, 37, 38, 39, 40, 41]
+            left_facial_landmarks = [42, 43, 44, 45, 46, 47]
+            right_facial_landmarks = [36, 37, 38, 39, 40, 41]
             left_gaze_right_level, left_white_space = self.get_gaze_right_level(
                 left_facial_landmarks,
                 landmarks,
                 frame,
                 gray
             )
-            right_facial_landmarks = [42, 43, 44, 45, 46, 47]
             right_gaze_right_level, right_white_space = self.get_gaze_right_level(
                 right_facial_landmarks,
                 landmarks,
@@ -170,11 +177,16 @@ class FaceGestureDetector:
                 gray
             )
             gaze_right_level = (left_gaze_right_level + right_gaze_right_level) / 2
+            print(gaze_right_level)
             left_blink_state = self.get_eye_blink_state(frame, landmarks, [42, 43, 45, 46])
             right_blink_state = self.get_eye_blink_state(frame, landmarks, [36, 37, 39, 40])
             print('right_blink_state', right_blink_state)
             print('left_blink_state', left_blink_state)
-
+            if self.debug:
+                cv2.imshow("frame", frame)
+                key = cv2.waitKey(1)
+                if key ==27:
+                    break
 
             if self.queue.full():
                 self.queue.queue.clear()
