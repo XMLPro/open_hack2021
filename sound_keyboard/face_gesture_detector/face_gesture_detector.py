@@ -35,7 +35,7 @@ class FaceGestureDetector:
         self.queue = queue
         self.detector = dlib.get_frontal_face_detector()
         self.predictor = dlib.shape_predictor("./sound_keyboard/face_gesture_detector/shape_predictor_68_face_landmarks.dat")
-        self.debug = sys.argv[1] == 'DEBUG'
+        self.debug = len(sys.argv) >= 2 and sys.argv[1] == 'DEBUG'
 
     def get_gaze_state(self, x):
         if x <= 0.54:
