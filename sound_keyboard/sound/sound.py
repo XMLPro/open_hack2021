@@ -3,6 +3,8 @@ from io import BytesIO
 from mpg123 import Mpg123, Out123
 
 def read_aloud(text : str):
+    if len(text) <= 0: return
+
     fp = BytesIO()
     tts = gTTS(text, lang="ja")
     tts.write_to_fp(fp)
