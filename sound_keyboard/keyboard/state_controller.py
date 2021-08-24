@@ -18,10 +18,7 @@ class Direction(Enum):
     DOWN = (0, 1)
 
 JP_KEY_MAP = [
-    ['あ', 'か', 'さ'],
-    ['た', 'な', 'は'],
-    ['ま', 'や', 'ら'],
-    ['小', 'わ', '、'],
+    ['あ', 'か', 'さ', 'た', 'な', 'は', 'ま', 'や', 'ら', '小', 'わ', '、']
 ]
 
 JP_CHILDREN_KEY_MAP = {
@@ -55,7 +52,7 @@ class KeyboardStateController:
         self.current_parent_char = KEYMAP[self.kind]['parent'][0][0]
         self.current_child_char = KEYMAP[self.kind]['parent'][0][0]
         self.current_parent_position = (0, 0) # (x, y)
-        self.current_child_position = Direction.CENTER
+        self.current_child_index = 0
 
         self.selected_parent = False
         self.text = ""
@@ -64,8 +61,8 @@ class KeyboardStateController:
         x, y = self.current_parent_position
         dx, dy = direction.value
 
-        nx = (x + dx) % len(KEYMAP[self.kind]['parent'][0])
-        ny = (y + dy) % len(KEYMAP[self.kind]['parent'])
+        nx = min(max(0, (x + dx)), len(KEYMAP[self.kind]['parent'][0]) - 1)
+        ny = min(max(0, (y + dy)), len(KEYMAP[self.kind]['parent']) - 1)
 
         return (
             KEYMAP[self.kind]['parent'][ny][nx], # neighbor char
@@ -102,35 +99,21 @@ class KeyboardStateController:
         # move current parent char to direction
         char, (nx, ny) = self.get_neighbor(direction)
         
-        self.current_parent_char = self.current_child_char = char
+        self.current_parent_char = char
         self.current_parent_position = (nx, ny)
-        self.current_child_position = Direction.CENTER
+        self.current_child_index = 0
+        self.current_child_char = KEYMAP[self.kind]['children'][self.current_parent_char][self.current_child_index]
     
 
     def move_child(self, direction: Direction):
 
-        x, y = self.current_child_position.value
-        dx, dy = direction.value
+        index = self.current_child_index
+        dx, _ = direction.value
 
-        if (x + dx, y + dy) != (0, 0):
-            self.current_child_position = direction
-        else:
-            self.current_child_position = Direction.CENTER
+        self.current_child_index = max(0, min(len(KEYMAP[self.kind]['children'][self.current_parent_char]) - 1, index + dx))
         
-        self.current_child_char = self.get_child_char(self.current_parent_char, self.current_child_position)
+        self.current_child_char = self.get_child_char(self.current_parent_char, self.current_child_index)
     
-    def get_child_char(self, parent_char, direction: Direction):
+    def get_child_char(self, parent_char, index):
 
-        index = 0
-        if direction == Direction.CENTER:
-            index = 0
-        if direction == Direction.LEFT:
-            index = 1
-        if direction == Direction.UP:
-            index = 2
-        if direction == Direction.RIGHT:
-            index = 3
-        if direction == Direction.DOWN:
-            index = 4
-        
         return KEYMAP[self.kind]['children'][parent_char][index]
