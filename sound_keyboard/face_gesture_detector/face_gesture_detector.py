@@ -182,8 +182,8 @@ class FaceGestureDetector:
                 gray
             )
             if self.debug:
-                cv2.fillPoly(frame, pts=[left_eye_region], color=(0, 255, 0))
-                cv2.fillPoly(frame, pts=[right_eye_region], color=(0, 255, 0))
+                cv2.polylines(frame, pts=[left_eye_region], isClosed=True, color=(0, 255, 0))
+                cv2.polylines(frame, pts=[right_eye_region], isClosed=True, color=(0, 255, 0))
             gaze_right_level = (left_gaze_right_level + right_gaze_right_level) / 2
             print(gaze_right_level)
             left_blink_state = self.get_eye_blink_state(frame, landmarks, [42, 43, 45, 46])
