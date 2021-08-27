@@ -155,6 +155,8 @@ class FaceGestureDetector:
             face = inference(frame)
             start, end = face
             if start == -1 and end == -1:
+                cv2.imshow('frame', frame)
+                cv2.waitKey(1)
                 continue
         
             (left, top), (right, bottom) = start, end
