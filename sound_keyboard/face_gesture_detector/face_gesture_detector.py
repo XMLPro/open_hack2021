@@ -8,6 +8,7 @@ from sound_keyboard.face_gesture_detector.enums import (
     MouthState,
     Gestures
 )
+import copy
 import cv2
 import dlib
 import numpy as np
@@ -257,8 +258,15 @@ class FaceGestureDetector:
                 right_eye_state=right_eye_state,
                 mouth_state=self.get_mouth_state(mouth_ratio),
             )
-            # print(gestures)
-            self.queue.put((gestures, time.time()))
+
+            if (
+                    gestures.eye_direction != EyeDirection.CENTER or
+                    gestures.left_eye_state != gestures.right_eye_state or
+                    ((self.previous == None or self.previous.mouth_state == MouthState.CLOSE) and gestures.mouth_state == MouthState.OPEN)
+                ):
+                self.queue.put((gestures, time.time()))
+
+            self.previous = copy.deepcopy(gestures)
 
 if __name__ == '__main__':
     queue = get_queue()
