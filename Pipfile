@@ -11,8 +11,6 @@ dlib = "*"
 gtts = "*"
 mpg123 = "*"
 mnn = "*"
-matplotlib = "*"
-torchsummary = "*"
 keras = "*"
 
 [dev-packages]
