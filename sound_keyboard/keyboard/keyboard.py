@@ -125,7 +125,6 @@ class Keyboard:
             return True
         
         if (self.previous_gestures is None or self.previous_gestures.mouth_state == MouthState.CLOSE) and gestures.mouth_state == MouthState.OPEN:
-            print("read text")
             if self.keyboard_state_controller.text != "":
                 read_aloud(self.keyboard_state_controller.text)
             self.keyboard_state_controller.clear()
@@ -184,7 +183,6 @@ class Keyboard:
 
         gestures: Gestures = None
         while not self.queue.empty():
-            print('getting from queue')
             g, enqueued_at = self.queue.get()
             now = time.time()
             # print('received gestures enqueued at: ', enqueued_at, 'now: ', now)
@@ -192,9 +190,6 @@ class Keyboard:
                 gestures = g
                 break
 
-        # print('gestures')
-        # print(gestures)
-        # for debug
         if gestures is None:
             gestures = Gestures(
                 eye_direction = EyeDirection.CENTER,
