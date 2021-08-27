@@ -5,8 +5,8 @@ from sound_keyboard.face_gesture_detector.face_detection import inference
 import cv2
 import dlib
 import numpy as np
+from math import hypot
 import sys
-
 
 class EyeDirection(Enum):
     CENTER = 0 # とれる？とれたら
@@ -29,6 +29,14 @@ class Gestures:
         self.left_eye_state = left_eye_state
         self.right_eye_state = right_eye_state
         self.mouth_state = mouth_state
+    
+    def __str__(self):
+        return (
+            "eye_direction: " + str(self.eye_direction) + "\n" +
+            "left_eye_state: " + str(self.left_eye_state) + "\n" +
+            "right_eye_state: " + str(self.right_eye_state) + "\n" +
+            "mouth_state: " + str(self.mouth_state) + "\n"
+        )
 
 
 class FaceGestureDetector:
@@ -47,6 +55,60 @@ class FaceGestureDetector:
             return EyeDirection.RIGHT
         return EyeDirection.CENTER
 
+    def get_mouth_state(self, mouth_ratio):
+        if mouth_ratio > 6.8:
+            return MouthState.CLOSE
+        else:
+            return MouthState.OPEN
+
+
+    #ランドマークの重心
+    def midpoint(self, p1, p2):
+        return int((p1.x + p2.x) / 2), int((p1.y + p2.y) / 2)
+
+    #口開閉検知
+    def get_mouth_ratio(self, eye_points, facial_landmarks):
+        mouth_region = np.array([
+            (
+                facial_landmarks.part(eye_points[0]).x,
+                facial_landmarks.part(eye_points[0]).y
+            ),
+            (
+                facial_landmarks.part(eye_points[1]).x,
+                facial_landmarks.part(eye_points[1]).y
+            ),
+            (
+                facial_landmarks.part(eye_points[2]).x,
+                facial_landmarks.part(eye_points[2]).y
+            ),
+            (
+                facial_landmarks.part(eye_points[3]).x,
+                facial_landmarks.part(eye_points[3]).y
+            ),
+            (
+                facial_landmarks.part(eye_points[4]).x,
+                facial_landmarks.part(eye_points[4]).y
+            ),
+            (
+                facial_landmarks.part(eye_points[5]).x,
+                facial_landmarks.part(eye_points[5]).y
+            )], np.int32)
+        left_point = (facial_landmarks.part(eye_points[0]).x, facial_landmarks.part(eye_points[0]).y)
+        right_point = (facial_landmarks.part(eye_points[3]).x, facial_landmarks.part(eye_points[3]).y)
+        center_top = self.midpoint(facial_landmarks.part(eye_points[1]), facial_landmarks.part(eye_points[2]))
+        center_bottom = self.midpoint(facial_landmarks.part(eye_points[5]), facial_landmarks.part(eye_points[4]))
+
+        # hor_line = cv2.line(frame, left_point, right_point, (0, 255, 0), 2)
+        # ver_line = cv2.line(frame, center_top, center_bottom, (0, 255, 0), 2)
+
+        hor_line_length = hypot((left_point[0] - right_point[0]), (left_point[1] - right_point[1]))
+        ver_line_length = hypot((center_top[0] - center_bottom[0]), (center_top[1] - center_bottom[1]))
+
+        if ver_line_length == 0:
+            ver_line_length += 0.001
+
+        ratio = hor_line_length / ver_line_length
+        return ratio, mouth_region
 
     # 視線検知
     def get_gaze_right_level(self, eye_points, facial_landmarks, frame, gray):
@@ -153,6 +215,7 @@ class FaceGestureDetector:
         # queueに(Gestureオブジェクト、time.time())の形でジェスチャーを入れていってください。
         while True:
             _, frame = self.cap.read()
+            frame = cv2.flip(frame, 1)
             face = inference(frame)
             start, end = face
             if start == -1 and end == -1:
@@ -184,12 +247,15 @@ class FaceGestureDetector:
             if self.debug:
                 cv2.polylines(frame, pts=[left_eye_region], isClosed=True, color=(0, 255, 0))
                 cv2.polylines(frame, pts=[right_eye_region], isClosed=True, color=(0, 255, 0))
+            #口の開閉度測定
+            mouth_landmarks = [60, 61, 63, 64, 65, 67]
+            mouth_ratio, eye_region = self.get_mouth_ratio(mouth_landmarks, landmarks)
+            if self.debug:
+                cv2.polylines(frame, pts=[eye_region], isClosed=True, color=(0, 255, 0), thickness=2)
+
             gaze_right_level = (left_gaze_right_level + right_gaze_right_level) / 2
-            print(gaze_right_level)
             left_blink_state = self.get_eye_blink_state(frame, landmarks, [42, 43, 45, 46])
             right_blink_state = self.get_eye_blink_state(frame, landmarks, [36, 37, 39, 40])
-            print('right_blink_state', right_blink_state)
-            print('left_blink_state', left_blink_state)
             if self.debug:
                 cv2.imshow("frame", frame)
                 key = cv2.waitKey(1)
@@ -199,13 +265,14 @@ class FaceGestureDetector:
             if self.queue.full():
                 self.queue.queue.clear()
 
-            #TODO(inazuma110, nadeemishikawa) 適当な値ではなく、ちゃんと画像からの検知に基づいてプロパティをセットしたGesturesクラスのオブジェクトを入れる
-            self.queue.put((Gestures(
+            gestures = Gestures(
                 eye_direction=self.get_gaze_state(gaze_right_level),
                 left_eye_state=left_blink_state,
                 right_eye_state=right_blink_state,
-                mouth_state=MouthState.CLOSE,
-            ), time.time()))
+                mouth_state=self.get_mouth_state(mouth_ratio),
+            )
+            print(gestures)
+            self.queue.put((gestures, time.time()))
 
 if __name__ == '__main__':
     queue = get_queue()
