@@ -29,7 +29,7 @@ BACKGROUND_COLOR = (242, 242, 242)
 KEYTILE_COLOR = (242, 242, 242)
 OVERLAY_COLOR = (0, 0, 0, 180)
 FONT_COLOR = (12, 9, 10)
-MAX_DELAY = 0.1
+MAX_DELAY = 0.5
 
 FONT_PATH = 'fonts/Noto_Sans_JP/NotoSansJP-Regular.otf'
 
@@ -190,7 +190,6 @@ class Keyboard:
                 gestures = g
                 break
 
-        # for debug
         if gestures is None:
             gestures = Gestures(
                 eye_direction = EyeDirection.CENTER,

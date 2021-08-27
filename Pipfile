@@ -11,6 +11,7 @@ dlib = "*"
 gtts = "*"
 mpg123 = "*"
 mnn = "*"
+keras = "*"
 
 [dev-packages]
 

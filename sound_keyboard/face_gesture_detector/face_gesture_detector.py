@@ -1,42 +1,19 @@
-from enum import Enum
 import time
 from sound_keyboard.queue import get_queue
 from sound_keyboard.face_gesture_detector.face_detection import inference
+from sound_keyboard.face_gesture_detector.eye_blink_detection import get_eye_state
+from sound_keyboard.face_gesture_detector.enums import (
+    EyeDirection,
+    EyeState,
+    MouthState,
+    Gestures
+)
 import cv2
 import dlib
 import numpy as np
 from math import hypot
-import sys
 from sound_keyboard.face_gesture_detector.gaze_tracking import GazeTracking
 
-class EyeDirection(Enum):
-    CENTER = 0 # とれる？とれたら
-    UP = 1
-    DOWN = 2
-    LEFT = 3
-    RIGHT = 4
-
-class EyeState(Enum):
-    CLOSE = 0
-    OPEN = 1
-
-class MouthState(Enum):
-    CLOSE = 0
-    OPEN = 1
-
-class Gestures:
-    def __init__(self, eye_direction = None, left_eye_state = None, right_eye_state = None, mouth_state = None):
-        self.eye_direction = eye_direction
-        self.left_eye_state = left_eye_state
-        self.right_eye_state = right_eye_state
-        self.mouth_state = mouth_state
-    def __str__(self):
-        return (
-            "eye_direction: " + str(self.eye_direction) + "\n" +
-            "left_eye_state: " + str(self.left_eye_state) + "\n" +
-            "right_eye_state: " + str(self.right_eye_state) + "\n" +
-            "mouth_state: " + str(self.mouth_state) + "\n"
-        )
 
 
 class FaceGestureDetector:
@@ -219,7 +196,6 @@ class FaceGestureDetector:
             _, frame = self.cap.read()
             self.gaze.refresh(frame)
             frame = self.gaze.annotated_frame()
-            # frame = cv2.flip(frame, 1)
             face = inference(frame)
             start, end = face
             if start == -1 and end == -1:
@@ -236,15 +212,13 @@ class FaceGestureDetector:
                 continue
 
             # まばたきの計測
-            left_blink_state = self.get_eye_blink_state(frame, landmarks, [42, 43, 45, 46])
-            right_blink_state = self.get_eye_blink_state(frame, landmarks, [36, 37, 39, 40])
+            left_eye_state, right_eye_state, left_eye_position, right_eye_position = get_eye_state(frame, landmarks)
+
 
             #口の開閉度測定
             mouth_landmarks = [60, 61, 63, 64, 65, 67]
-            mouth_ratio, eye_region = self.get_mouth_ratio(mouth_landmarks, landmarks)
+            mouth_ratio, mouth_region = self.get_mouth_ratio(mouth_landmarks, landmarks)
 
-            if self.debug:
-                cv2.polylines(frame, pts=[eye_region], isClosed=True, color=(0, 255, 0), thickness=2)
             eye_direction = EyeDirection.CENTER
             if self.gaze.is_right():
                 eye_direction = EyeDirection.RIGHT
@@ -254,6 +228,21 @@ class FaceGestureDetector:
                 eye_direction = EyeDirection.CENTER
             
             if self.debug:
+                def draw_eye(position, state):
+                    x, y, x1, y1 = position
+                    cv2.rectangle(frame, (x, y), (x1, y1), (255, 0, 0), 2)
+
+                    text = ""
+                    if state == EyeState.OPEN:
+                        text = "open"
+                    else:
+                        text = "close"
+
+                    cv2.putText(frame, text, (x, y1), cv2.FONT_HERSHEY_PLAIN, 2, (255, 0, 0), 5)
+                
+                draw_eye(left_eye_position, left_eye_state)
+                draw_eye(right_eye_position, right_eye_state)
+                cv2.polylines(frame, pts=[mouth_region], isClosed=True, color=(0, 255, 0), thickness=2)
                 cv2.imshow("frame", frame)
                 key = cv2.waitKey(1)
                 if key ==27:
@@ -263,13 +252,12 @@ class FaceGestureDetector:
                 self.queue.queue.clear()
 
             gestures = Gestures(
-                #eye_direction=self.get_gaze_state(gaze_right_level),
                 eye_direction=eye_direction,
-                left_eye_state=left_blink_state,
-                right_eye_state=right_blink_state,
+                left_eye_state=left_eye_state,
+                right_eye_state=right_eye_state,
                 mouth_state=self.get_mouth_state(mouth_ratio),
             )
-            print(gestures)
+            # print(gestures)
             self.queue.put((gestures, time.time()))
 
 if __name__ == '__main__':
