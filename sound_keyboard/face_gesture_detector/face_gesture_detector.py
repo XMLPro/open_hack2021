@@ -45,7 +45,8 @@ class FaceGestureDetector:
         self.queue = queue
         self.detector = dlib.get_frontal_face_detector()
         self.predictor = dlib.shape_predictor("./sound_keyboard/face_gesture_detector/shape_predictor_68_face_landmarks.dat")
-        self.debug = len(sys.argv) >= 2 and sys.argv[1] == 'DEBUG'
+        # self.debug = len(sys.argv) >= 2 and sys.argv[1] == 'DEBUG'
+        self.debug = True
 
     def get_gaze_state(self, x):
         if x <= 0.54:
@@ -168,7 +169,7 @@ class FaceGestureDetector:
         else:
             gaze_right_level = left_side_white / (right_side_white+left_side_white)
 
-        return gaze_right_level, under_side_white
+        return gaze_right_level, under_side_white, left_eye_region
 
     def gaze_preprocess(self, frame, face):
 
@@ -231,25 +232,26 @@ class FaceGestureDetector:
                 continue
             left_facial_landmarks = [42, 43, 44, 45, 46, 47]
             right_facial_landmarks = [36, 37, 38, 39, 40, 41]
-            left_gaze_right_level, left_white_space = self.get_gaze_right_level(
+            left_gaze_right_level, left_white_space, left_eye_region = self.get_gaze_right_level(
                 left_facial_landmarks,
                 landmarks,
                 frame,
                 gray
             )
-            right_gaze_right_level, right_white_space = self.get_gaze_right_level(
+            right_gaze_right_level, right_white_space, right_eye_region = self.get_gaze_right_level(
                 right_facial_landmarks,
                 landmarks,
                 frame,
                 gray
             )
+            if self.debug:
+                cv2.polylines(frame, pts=[left_eye_region], isClosed=True, color=(0, 255, 0))
+                cv2.polylines(frame, pts=[right_eye_region], isClosed=True, color=(0, 255, 0))
             #口の開閉度測定
             mouth_landmarks = [60, 61, 63, 64, 65, 67]
             mouth_ratio, eye_region = self.get_mouth_ratio(mouth_landmarks, landmarks)
             if self.debug:
                 cv2.polylines(frame, pts=[eye_region], isClosed=True, color=(0, 255, 0), thickness=2)
-
-
 
             gaze_right_level = (left_gaze_right_level + right_gaze_right_level) / 2
             left_blink_state = self.get_eye_blink_state(frame, landmarks, [42, 43, 45, 46])
