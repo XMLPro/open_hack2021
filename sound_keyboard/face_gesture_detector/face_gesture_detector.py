@@ -1,10 +1,12 @@
 from enum import Enum
 import time
 from sound_keyboard.queue import get_queue
+from sound_keyboard.face_gesture_detector.face_detection import inference
 import cv2
 import dlib
 import numpy as np
 import sys
+
 
 class EyeDirection(Enum):
     CENTER = 0 # とれる？とれたら
@@ -106,19 +108,10 @@ class FaceGestureDetector:
 
         return gaze_right_level, under_side_white
 
-    def gaze_preprocess(self, frame):
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    def gaze_preprocess(self, frame, face):
 
         #ランドマーク
-        faces = self.detector(gray)
-        if(len(faces)==0):
-            print("顔がカメラに移っていないです。")
-            return -1, -1
-        face = faces[0]
-        x1 = face.left()
-        y1 = face.top()
-        x2 = face.right()
-        y2 = face.bottom()
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
         landmarks = self.predictor(gray, face)
         return landmarks, gray
@@ -159,7 +152,18 @@ class FaceGestureDetector:
         # queueに(Gestureオブジェクト、time.time())の形でジェスチャーを入れていってください。
         while True:
             _, frame = self.cap.read()
-            landmarks, gray = self.gaze_preprocess(frame)
+            face = inference(frame)
+            start, end = face
+            if start == -1 and end == -1:
+                cv2.imshow('frame', frame)
+                cv2.waitKey(1)
+                continue
+        
+            (left, top), (right, bottom) = start, end
+            if self.debug:
+                cv2.rectangle(frame, start, end, (255, 0, 0), 2)
+            dlib_face = dlib.rectangle(left=left, top=top, right=right, bottom=bottom)
+            landmarks, gray = self.gaze_preprocess(frame, dlib_face)
             if landmarks == -1 and gray == -1:
                 continue
             left_facial_landmarks = [42, 43, 44, 45, 46, 47]
