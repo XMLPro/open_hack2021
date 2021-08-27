@@ -26,7 +26,7 @@ from sound_keyboard.face_gesture_detector.face_gesture_detector import (
 
 # constants
 BACKGROUND_COLOR = (242, 242, 242)
-KEYTILE_COLOR = (220, 220, 220)
+KEYTILE_COLOR = (242, 242, 242)
 OVERLAY_COLOR = (0, 0, 0, 180)
 FONT_COLOR = (12, 9, 10)
 MAX_DELAY = 0.1
@@ -62,81 +62,48 @@ class Keyboard:
         textRect.center = pos
         self.surface.blit(text, textRect)
 
-    def draw_around(self):
-
-        width = self.surface.get_width()
-        height = self.surface.get_height()
-
-        left = (width / 8, height / 2)
-        up = (width / 2, height / 8)
-        right = (width * 7 / 8, height / 2)
-        down = (width / 2, height * 7 / 8)
-
-        center_font_size = int(min(width, height) / 12)
-        other_font_size = int(center_font_size * 4 / 12)
-
-        chars = [
-            (self.keyboard_state_controller.get_neighbor(Direction.LEFT)[0], left, other_font_size),
-            (self.keyboard_state_controller.get_neighbor(Direction.UP)[0], up, other_font_size),
-            (self.keyboard_state_controller.get_neighbor(Direction.RIGHT)[0], right, other_font_size),
-            (self.keyboard_state_controller.get_neighbor(Direction.DOWN)[0], down, other_font_size),
-        ]
-
-        for char in chars:
-            self.draw_text(char)
-    
-    def draw_tile(self, char, center, radius, tile_color, border_size):
+    def draw_tile(self, char, center, radius, tile_color, border_size, font_size = 15):
         pygame.draw.circle(self.surface, tile_color, center, radius, border_size)
-        self.draw_text((char, center, 15))
+        self.draw_text((char, center, font_size))
 
     def draw_keyboard(self):
         kind = self.keyboard_state_controller.kind
-        keymap = KEYMAP[kind]['parent']
+        keymap = KEYMAP[kind]['parent'][0]
 
         width = self.surface.get_width()
         height = self.surface.get_height()
 
-        cell_size = 1e9
-        min_cell_size = 50
-        
-        row_num = len(keymap)
-        col_num = len(keymap[0])
+        base = width // 2
 
-        if min_cell_size * row_num < height:
-            cell_size = min_cell_size
-        else:
-            cell_size = int(height / row_num)
+        cell_sizes = [70, 40, 30]
+        font_sizes = [70, 40, 30]
+        distances = [0, base // 2, base * 4 // 5]
 
-        if min_cell_size * col_num < width:
-            cell_size = min(cell_size, min_cell_size)
-        else:
-            cell_size = min(cell_size, int(width / col_num))
         
         padding = 5
-        
-        keyboard_width = cell_size * col_num + padding * (col_num - 1)
-        keyboard_height = cell_size * row_num + padding * (row_num - 1)
 
-        left = width / 2 - keyboard_width / 2
-        top = height / 2 - keyboard_height / 2
+        center_index = keymap.index(self.keyboard_state_controller.current_parent_char)
 
-        for i, row in enumerate(keymap):
-            for j, char in enumerate(row):
-                x = left + j * cell_size + (padding * j) + cell_size // 2
-                y = top + i * cell_size + (padding * i) + cell_size // 2
-                is_focused = char == self.keyboard_state_controller.current_parent_char
-                # self.draw_tile(
-                #    (char, (x, y), cell_size / 2, is_focused))
+        for dir in range(-2, 3):
+            index = center_index + dir
+            cell_size = cell_sizes[abs(dir)]
+            font_size = font_sizes[abs(dir)]
+            distance = distances[abs(dir)]
+
+            sign = 1 if dir > 0 else -1
+
+            if 0 <= index < len(keymap):
                 self.draw_tile(
-                    char,
-                    (x, y),
-                    cell_size / 2,
-                    KEYTILE_COLOR if is_focused else BACKGROUND_COLOR,
-                    3 if is_focused else 1
+                    keymap[index] if abs(dir) != 2 else '...',
+                    (width // 2 +  sign * distance, height // 2),
+                    cell_size,
+                    KEYTILE_COLOR,
+                    0,
+                    font_size
                 )
         
         # draw currently selected text
-        self.draw_text((self.keyboard_state_controller.text, (width / 2, top - 10), 20))
+        self.draw_text((self.keyboard_state_controller.text, (width / 2, height * 7 // 8), 20))
 
     def updateKeyboardState(self, gestures: Gestures):
 
@@ -158,59 +125,57 @@ class Keyboard:
             return True
         
         if (self.previous_gestures is None or self.previous_gestures.mouth_state == MouthState.CLOSE) and gestures.mouth_state == MouthState.OPEN:
-            read_aloud(self.keyboard_state_controller.text)
+            if self.keyboard_state_controller.text != "":
+                read_aloud(self.keyboard_state_controller.text)
             self.keyboard_state_controller.clear()
             return True
         
         return False
     
     def draw_child_keyboard(self):
-        
+
+        kind = self.keyboard_state_controller.kind
+        keymap = KEYMAP[kind]['children'][self.keyboard_state_controller.current_parent_char]
         width = self.surface.get_width()
         height = self.surface.get_height()
 
-        cell_size = int(min(width, height) / 10)
+        base = width // 2
 
-        center_char = self.keyboard_state_controller.current_parent_char
-        current_char = self.keyboard_state_controller.current_child_char
+        cell_sizes = [70, 40, 30]
+        font_sizes = [60, 30, 20]
+        distances = [0, base // 2, base * 4 // 5]
 
-        padding = 5
-        self.draw_tile(
-            center_char,
-            (width / 2, height / 2),
-            cell_size / 2,
-            BACKGROUND_COLOR if center_char == current_char else KEYTILE_COLOR,
-            0 if center_char == current_char else 1
-        )
+        center_index = keymap.index(self.keyboard_state_controller.current_child_char)
+
+        for dir in range(-2, 3):
+            index = center_index + dir
+            cell_size = cell_sizes[abs(dir)]
+            font_size = font_sizes[abs(dir)]
+            distance = distances[abs(dir)]
+
+            sign = 1 if dir > 0 else -1
+
+            if 0 <= index < len(keymap):
+                self.draw_tile(
+                    keymap[index] if abs(dir) != 2 else '...',
+                    (width // 2 +  sign * distance, height // 3),
+                    cell_size,
+                    KEYTILE_COLOR,
+                    0,
+                    font_size
+                )
         
-        for direction in Direction:
-
-            char = self.keyboard_state_controller.get_child_char(center_char, direction)
-            x, y = direction.value
-            self.draw_tile(
-                char,
-                (width / 2 + (cell_size + padding) * x, height / 2 + (cell_size + padding) * y),
-                cell_size / 2,
-                BACKGROUND_COLOR if char == current_char else KEYTILE_COLOR,
-                0 if char == current_char else 1
-            )
 
     def draw(self):
 
         # show parent view
         self.surface.fill(BACKGROUND_COLOR)
 
-        self.draw_keyboard()
-        self.draw_around()
-        
         if self.keyboard_state_controller.selected_parent:
-            # show overlay
-            self.overlay = pygame.Surface([self.surface.get_width(), self.surface.get_height()], pygame.SRCALPHA, 32)
-            self.overlay.convert_alpha()
-            self.overlay.fill(OVERLAY_COLOR)
-            self.surface.blit(self.overlay, (0, 0))
             self.draw_child_keyboard()
-
+        else:
+            self.draw_keyboard()
+            
         
         pygame.display.update()
     
