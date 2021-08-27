@@ -11,6 +11,8 @@ dlib = "*"
 gtts = "*"
 mpg123 = "*"
 mnn = "*"
+matplotlib = "*"
+torchsummary = "*"
 
 [dev-packages]
 
