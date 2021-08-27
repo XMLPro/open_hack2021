@@ -235,17 +235,17 @@ class FaceGestureDetector:
                     x, y, x1, y1 = position
                     cv2.rectangle(frame, (x, y), (x1, y1), (255, 0, 0), 2)
 
-                    text = ''
+                    text = ""
                     if state == EyeState.OPEN:
-                        text = 'open'
+                        text = "open"
                     else:
-                        text = 'close'
+                        text = "close"
+
                     cv2.putText(frame, text, (x, y1), cv2.FONT_HERSHEY_PLAIN, 2, (255, 0, 0), 5)
                 
                 draw_eye(left_eye_position, left_eye_state)
                 draw_eye(right_eye_position, right_eye_state)
                 cv2.polylines(frame, pts=[mouth_region], isClosed=True, color=(0, 255, 0), thickness=2)
-                frame = cv2.flip(frame, 1)
                 cv2.imshow("frame", frame)
                 key = cv2.waitKey(1)
                 if key ==27:
