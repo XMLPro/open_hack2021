@@ -50,7 +50,6 @@ class GazeTracking(object):
             self.eye_right = Eye(frame, landmarks, 1, self.calibration)
 
         except IndexError:
-            print("indexerror")
             self.eye_left = None
             self.eye_right = None
 

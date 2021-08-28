@@ -8,6 +8,7 @@ from sound_keyboard.face_gesture_detector.enums import (
     MouthState,
     Gestures
 )
+import copy
 import cv2
 import dlib
 import numpy as np
@@ -24,6 +25,8 @@ class FaceGestureDetector:
         self.predictor = dlib.shape_predictor("./sound_keyboard/face_gesture_detector/shape_predictor_68_face_landmarks.dat")
         # self.debug = len(sys.argv) >= 2 and sys.argv[1] == 'DEBUG'
         self.debug = True
+
+        self.previous = None
 
         self.gaze = GazeTracking()
 
@@ -170,8 +173,6 @@ class FaceGestureDetector:
         frame_trim = frame[y[1]-trim_val:y[3]+trim_val,x[0]:x[2]]
         height, width = frame_trim.shape[0],frame_trim.shape[1]
         frame_trim_resize = cv2.resize(frame_trim , (int(width*7.0), int(height*7.0)))
-        if self.debug:
-            cv2.imshow("eye trim",frame_trim_resize)
         # gray scale
         frame_gray = cv2.cvtColor(frame_trim_resize, cv2.COLOR_BGR2GRAY)
         # 平滑化
@@ -257,8 +258,15 @@ class FaceGestureDetector:
                 right_eye_state=right_eye_state,
                 mouth_state=self.get_mouth_state(mouth_ratio),
             )
-            # print(gestures)
-            self.queue.put((gestures, time.time()))
+
+            if (
+                    gestures.eye_direction != EyeDirection.CENTER or
+                    gestures.left_eye_state != gestures.right_eye_state or
+                    ((self.previous == None or self.previous.mouth_state == MouthState.CLOSE) and gestures.mouth_state == MouthState.OPEN)
+                ):
+                self.queue.put((gestures, time.time()))
+
+            self.previous = copy.deepcopy(gestures)
 
 if __name__ == '__main__':
     queue = get_queue()

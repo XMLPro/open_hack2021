@@ -191,12 +191,16 @@ class Keyboard:
                 break
 
         if gestures is None:
+            # イベントがなにも届いていないので更新処理もしない
+            return
+            """
             gestures = Gestures(
                 eye_direction = EyeDirection.CENTER,
                 left_eye_state = EyeState.OPEN,
                 right_eye_state = EyeState.OPEN,
                 mouth_state = MouthState.CLOSE,
             )
+            """
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
