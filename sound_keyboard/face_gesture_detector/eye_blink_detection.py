@@ -64,7 +64,7 @@ def get_area(frame, position):
 def infer(image, type):
     pred = model.predict(image)
     
-    return EyeState.OPEN if pred[0][0] > 0.05 else EyeState.CLOSE
+    return EyeState.OPEN if pred[0][0] > 0.03 else EyeState.CLOSE
 
 
 
@@ -80,11 +80,6 @@ def get_eye_state(frame, landmarks):
     left_eye = cv2.resize(left_eye, (34, 26))
     right_eye = cv2.resize(right_eye, (34, 26))
     right_eye = cv2.flip(right_eye, flipCode=1)
-
-    cv2.imshow('left_eye', left_eye)
-    cv2.imshow('right_eye', right_eye)
-    #print("left eye shape", left_eye.shape)
-    #print("right eye shape", right_eye.shape)
 
     left_eye_input = left_eye.copy().reshape((1, 26, 34, 1)).astype(np.float32) / 255
     right_eye_input = right_eye.copy().reshape((1, 26, 34, 1)).astype(np.float32) / 255
