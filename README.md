@@ -1,7 +1,7 @@
 # open_hack2021
 OpenHackU 2021 develop repository
 
-# FaceBoard
+# 技育展2022
 技育展2022のレポジトリは[こちら](https://github.com/FaceB0ard/FaceBoard2022)！
 
 ### 環境
